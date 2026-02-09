@@ -1,0 +1,33 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "us-east-1"
+    IMAGE_REPO_NAME: "qwen3-omni-training"
+    IMAGE_TAG: "latest"
+
+phases:
+  pre_build:
+    commands:
+      - echo "Getting AWS Account ID..."
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - echo "Logging in to Docker Hub..."
+      - SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id dockerhub/creds --query SecretString --output text)
+      - DOCKERHUB_USERNAME=$(echo "$SECRET_JSON" | jq -r .username)
+      - DOCKERHUB_TOKEN=$(echo "$SECRET_JSON" | jq -r .password)
+      - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+      - echo "Docker Hub login OK"
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+  build:
+    commands:
+      - echo "Building Docker image..."
+      - docker build -t "$REPOSITORY_URI:$IMAGE_TAG" .
+      - docker tag "$REPOSITORY_URI:$IMAGE_TAG" "$REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+  post_build:
+    commands:
+      - echo "Pushing Docker image..."
+      - docker push "$REPOSITORY_URI:$IMAGE_TAG"
+      - docker push "$REPOSITORY_URI:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+      - echo "Build completed on $(date)"
