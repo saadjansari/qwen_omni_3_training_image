@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1
 # Install system deps
 RUN apt-get update && apt-get install -y \
     python3.11 python3.11-venv python3.11-dev python3-pip \
-    git wget curl ffmpeg \
+    git wget curl ffmpeg libsndfile1 j\
     && rm -rf /var/lib/apt/lists/*
 
 # Make python3.11 the default
@@ -21,7 +21,7 @@ RUN pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 \
     --index-url https://download.pytorch.org/whl/cu126
 
 # Install ms-swift and training deps
-RUN pip install ms-swift deepspeed==0.14.5 accelerate transformers wandb awscli
+RUN pip install ms-swift deepspeed==0.14.5 accelerate transformers wandb awscli "qwen-omni-utils[decord]" soundfile
 
 # Install flash-attn (prebuilt wheel)
 RUN pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.8.3/flash_attn-2.8.3+cu12torch2.6cxx11abiTRUE-cp311-cp311-linux_x86_64.whl
